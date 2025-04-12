@@ -67,7 +67,7 @@ function joinRoom() {
         return;
     }
 
-    fetch(`/chat-service/rooms/${roomId}`)
+    fetch(`/rooms/${roomId}`)
         .then(response => {
             if (response.ok) {
                 connectToRoom(roomId);
@@ -91,7 +91,7 @@ function createRoom() {
         return;
     }
 
-    fetch(`/chat-service/rooms`, {
+    fetch(`/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: roomId
@@ -126,7 +126,7 @@ function sendMessage(event) {
 }
 
 function fetchOldMessages() {
-    return fetch(`/chat-service/rooms/${roomId}/messages?page=0&size=20`)
+    return fetch(`/rooms/${roomId}/messages?page=0&size=20`)
         .then(response => response.json())
         .then(messages => {
             console.log("Fetched messages: ", messages)
