@@ -7,10 +7,8 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Controller;
 import com.mthien.chat_service.entity.Message;
-import com.mthien.chat_service.payload.ChatMessage;
 import com.mthien.chat_service.payload.MessageRequest;
 import com.mthien.chat_service.service.ChatService;
-
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -20,6 +18,12 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ChatController {
     ChatService chatService;
+
+    @MessageMapping("/chat/private/{conversationId}")
+    @SendTo("/topic/private/{conversationId}")
+    public Message sendPrivateMessage(@DestinationVariable String conversationId, @Payload MessageRequest request) {
+        return chatService.sendPrivateMessagge(conversationId, request);
+    }
 
     @MessageMapping("/chat/sendMessage/{roomId}")
     @SendTo("/topic/room/{roomId}")
@@ -41,19 +45,20 @@ public class ChatController {
             SimpMessageHeaderAccessor headerAccessor) {
         // Add username in websocket session
         headerAccessor.getSessionAttributes().put("username", messageRequest.getSender());
+        headerAccessor.getSessionAttributes().put("roomId", roomId);
         return messageRequest;
     }
 
     @MessageMapping("/chat/sendMessage")
     @SendTo("/topic/public")
-    public ChatMessage sendGroupMessage(@Payload ChatMessage chatMessage) {
+    public MessageRequest sendGroupMessage(@Payload MessageRequest chatMessage) {
         return chatMessage;
     }
 
     @MessageMapping("/chat/addUserGroup")
     @SendTo("/topic/public")
-    public ChatMessage addUserGroup(
-            @Payload ChatMessage chatMessage,
+    public MessageRequest addUserGroup(
+            @Payload MessageRequest chatMessage,
             SimpMessageHeaderAccessor headerAccessor) {
         // Add username in websocket session
         headerAccessor.getSessionAttributes().put("username", chatMessage.getSender());
