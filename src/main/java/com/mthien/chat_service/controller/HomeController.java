@@ -17,6 +17,11 @@ public class HomeController {
         return new ModelAndView("room-chat");
     }
 
+    @GetMapping("/private-chat")
+    public ModelAndView inbox(){
+        return new ModelAndView("private-chat");
+    }
+
     @GetMapping("/home")
     public String honme() {
         return "home";

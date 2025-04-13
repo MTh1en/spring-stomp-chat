@@ -12,5 +12,5 @@ import com.mthien.chat_service.entity.Conversation;
 public interface ConversationRepository extends MongoRepository<Conversation, String> {
     Optional<Conversation> findByUserId1AndUserId2(String userId1, String userId2);
 
-    List<Conversation> findByUserId1(String userId1);
+    List<Conversation> findByUserId1OrUserId2(String userId1, String userId2);
 }

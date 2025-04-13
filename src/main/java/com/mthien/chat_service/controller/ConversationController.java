@@ -1,9 +1,5 @@
 package com.mthien.chat_service.controller;
 
-import java.util.List;
-
-import javax.print.DocFlavor.READER;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,8 +8,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.mthien.chat_service.entity.Conversation;
-import com.mthien.chat_service.entity.Message;
 import com.mthien.chat_service.service.ConversationService;
 
 import lombok.AccessLevel;

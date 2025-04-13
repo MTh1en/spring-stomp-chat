@@ -34,7 +34,7 @@ public class ConversationService {
     }
 
     public List<Conversation> getUserConversation(String userId) {
-        return conversationRepository.findByUserId1(userId);
+        return conversationRepository.findByUserId1OrUserId2(userId, userId);
     }
 
     public List<Message> getMessages(String conversationId, int page, int size) {
