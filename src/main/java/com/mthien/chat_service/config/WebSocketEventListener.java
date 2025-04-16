@@ -34,7 +34,7 @@ public class WebSocketEventListener {
                     .sender(username)
                     .messageTime(LocalDateTime.now())
                     .build();
-           
+
             if (roomId != null) {
                 messageTemplate.convertAndSend(String.format("/topic/room/%s", roomId), chatMessage);
                 log.info("Sending message to /topic/room/{}", roomId);

@@ -20,7 +20,6 @@ public class Message {
     String sender;
     String content;
     String fileUrl;
-    String fileType;
     LocalDateTime timeStamp;
 
     public Message(String sender, String content) {

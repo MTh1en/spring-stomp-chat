@@ -18,7 +18,6 @@ public class MessageRequest {
     String sender;
     String content;
     String fileUrl;
-    String fileType;
     LocalDateTime messageTime;
     MessageType type;
 }

@@ -52,6 +52,7 @@ public class ChatService {
                 .sender(request.getSender())
                 .content(request.getContent())
                 .timeStamp(LocalDateTime.now())
+                .fileUrl(request.getFileUrl())
                 .build();
         existingConversation.getMessages().add(message);
         conversationRepository.save(existingConversation);

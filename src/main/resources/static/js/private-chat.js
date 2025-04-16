@@ -1,198 +1,204 @@
-'use strict';
+class ChatApp {
+    constructor() {
+        // DOM elements (như @Autowired)
+        this.homePage = document.querySelector('#home-page');
+        this.chatPage = document.querySelector('#chat-page');
+        this.usernameInput = document.querySelector('#username');
+        this.loadConversationsBtn = document.querySelector('#load-conversations');
+        this.newChatBtn = document.querySelector('#new-chat');
+        this.conversationsList = document.querySelector('#conversations');
+        this.errorMessage = document.querySelector('#error-message');
+        this.otherUserSpan = document.querySelector('#other-user');
+        this.backBtn = document.querySelector('#back');
+        this.messageForm = document.querySelector('#message-form');
+        this.messageInput = document.querySelector('#message');
+        this.fileInput = document.querySelector('#file');
+        this.sendMessageBtn = document.querySelector('#send-message');
+        this.messages = document.querySelector('#messages');
+        this.connecting = document.querySelector('.connecting');
 
-var privatePage = document.querySelector('#private-page');
-var chatPage = document.querySelector('#chat-page');
-var privateForm = document.querySelector('#privateForm');
-var loadConversationsButton = document.querySelector('#loadConversations');
-var startNewChatButton = document.querySelector('#startNewChat');
-var messageForm = document.querySelector('#messageForm');
-var messageInput = document.querySelector('#message');
-var messageArea = document.querySelector('#messageArea');
-var connectingElement = document.querySelector('.connecting');
-var errorMessage = document.querySelector('#errorMessage');
-var conversationsList = document.querySelector('#conversations');
-var otherUserSpan = document.querySelector('#otherUser');
-var backToListButton = document.querySelector('#backToList');
+        // State (như private fields)
+        this.username = null;
+        this.conversationId = null;
+        this.otherUser = null;
+        this.stompClient = null;
 
-var stompClient = null;
-var conversationId = null;
-var username = null;
-var otherUserId = null;
+        // Bind events (như @EventListener)
+        this.loadConversationsBtn.addEventListener('click', () => this.loadConversations());
+        this.newChatBtn.addEventListener('click', () => this.startNewChat());
+        this.backBtn.addEventListener('click', () => this.back());
+        this.messageForm.addEventListener('submit', (e) => this.sendMessage(e));
+    }
 
-function loadConversations(event) {
-    username = document.querySelector('#username').value.trim();
+    // Xử lý lỗi (như @ExceptionHandler)
+    showError(message) {
+        this.errorMessage.textContent = message;
+        this.errorMessage.classList.remove('hidden');
+    }
 
-    if (username) {
-        fetch(`/conversation/${username}`)
-            .then(response => response.json())
-            .then(conversations => {
-                conversationsList.innerHTML = '';
-                conversations.forEach(conversation => {
-                    var li = document.createElement('li');
-                    li.textContent = `Chat with ${conversation.userId2}`;
-                    li.dataset.conversationId = conversation.id;
-                    li.classList.add('conversation-item');
-                    li.addEventListener('click', () => connectToExistingConversation(conversation.id, conversation.otherUser));
-                    conversationsList.appendChild(li);
-                });
-                document.querySelector('#conversationList').classList.remove('hidden');
-            })
-            .catch(error => {
-                errorMessage.textContent = 'Failed to load conversations. Please try again!';
-                errorMessage.classList.remove('hidden');
+    hideError() {
+        this.errorMessage.classList.add('hidden');
+    }
+
+    // Hiển thị tin nhắn (như toString của Message)
+    showMessage(message) {
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${message.sender}</strong>: ${message.content || ''}`;
+        if (message.fileUrl) {
+            li.innerHTML += `<br><a href="${message.fileUrl}" target="_blank">Show File</a>`;
+        }
+        this.messages.appendChild(li);
+        this.messages.scrollTop = this.messages.scrollHeight;
+    }
+
+    // Load conversations (như @GetMapping("/conversation/{userId}"))
+    async loadConversations() {
+        this.username = this.usernameInput.value.trim();
+        if (!this.username) {
+            this.showError('Username is required');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/conversation/${this.username}`);
+            if (!response.ok) {
+                throw new Error('Cannot load conversations');
+            }
+            const conversations = await response.json();
+            this.conversationsList.innerHTML = '';
+            conversations.forEach(conv => {
+                const otherUser = conv.userId1 === this.username ? conv.userId2 : conv.userId1;
+                const li = document.createElement('li');
+                li.textContent = `Chat with ${otherUser}`;
+                li.addEventListener('click', () => this.openChat(conv.id, otherUser));
+                this.conversationsList.appendChild(li);
             });
-    } else {
-        errorMessage.textContent = 'Username cannot be empty!';
-        errorMessage.classList.remove('hidden');
+            document.querySelector('#conversation-list').classList.remove('hidden');
+            this.hideError();
+        } catch (error) {
+            this.showError(error.message);
+        }
     }
-    event.preventDefault();
-}
 
-function connectToExistingConversation(id, otherUser) {
-    // Gán ID cuộc hội thoại và thông tin người dùng khác
-    conversationId = id;
-    otherUserId = otherUser;
+    // Tạo conversation mới (như @PostMapping("/conversation/{userId1}/{userId2}"))
+    async startNewChat() {
+        const otherUser = prompt('Enter other user ID:');
+        if (!otherUser || !otherUser.trim()) {
+            this.showError('Other user ID is required');
+            return;
+        }
 
-    // Chuyển sang màn hình chat
-    privatePage.classList.add('hidden');
-    chatPage.classList.remove('hidden');
-    otherUserSpan.textContent = otherUser || "Unknown";
-
-    // Kết nối WebSocket
-    var socket = new SockJS('/ws');
-    stompClient = Stomp.over(socket);
-
-    stompClient.connect({}, () => {
-        // Tải lịch sử tin nhắn sau khi kết nối thành công
-        fetchOldMessages();
-        onConnected();
-    }, onError);
-}
-
-function startNewChat(event) {
-    var otherUserInput = prompt('Enter the User ID to chat with:');
-    if (otherUserInput) {
-        otherUserId = otherUserInput.trim();
-        connectToConversation(event);
-    }
-}
-
-function connectToConversation(event) {
-    if (username && otherUserId) {
-        fetch(`/conversation/${username}/${otherUserId}`, { method: 'POST' })
-            .then(response => response.json())
-            .then(conversation => {
-                conversationId = conversation.id;
-                privatePage.classList.add('hidden');
-                chatPage.classList.remove('hidden');
-                otherUserSpan.textContent = otherUserId;
-
-                var socket = new SockJS('/ws');
-                stompClient = Stomp.over(socket);
-
-                stompClient.connect({}, () => {
-                    fetchOldMessages();
-                    onConnected();
-                }, onError);
-            })
-            .catch(error => {
-                errorMessage.textContent = 'Failed to start conversation. Please try again!';
-                errorMessage.classList.remove('hidden');
+        try {
+            const response = await fetch(`/conversation/${this.username}/${otherUser.trim()}`, {
+                method: 'POST'
             });
-    } else {
-        errorMessage.textContent = 'Username and Other User ID cannot be empty!';
-        errorMessage.classList.remove('hidden');
+            if (!response.ok) {
+                throw new Error('Cannot start new chat');
+            }
+            const conv = await response.json();
+            this.openChat(conv.id, otherUser.trim());
+        } catch (error) {
+            this.showError(error.message);
+        }
     }
-    event.preventDefault();
-}
 
-function onConnected() {
-    stompClient.subscribe(`/topic/private/${conversationId}`, onMessageReceived);
-    connectingElement.classList.add('hidden');
-}
+    // Mở chat (như @GetMapping("/chat/{conversationId}"))
+    async openChat(conversationId, otherUser) {
+        this.conversationId = conversationId;
+        this.otherUser = otherUser;
 
-function onError(error) {
-    connectingElement.textContent = 'Could not connect to WebSocket server. Please refresh this page to try again!';
-    connectingElement.style.color = 'red';
-}
+        // Chuyển màn hình (như return "chat.html")
+        this.otherUserSpan.textContent = otherUser;
+        this.messages.innerHTML = '';
 
-function sendMessage(event) {
-    var messageContent = messageInput.value.trim();
-    if (messageContent && stompClient) {
-        var chatMessage = {
-            sender: username,
-            content: messageContent,
+        try {
+            // Kết nối STOMP (như @Autowired SimpMessagingTemplate)
+            const socket = new SockJS('/ws');
+            this.stompClient = Stomp.over(socket);
+            await new Promise((resolve, reject) => {
+                this.stompClient.connect({}, () => {
+                    this.stompClient.subscribe(`/topic/private/${conversationId}`, (payload) => {
+                        const message = JSON.parse(payload.body);
+                        this.showMessage(message);
+                    });
+                    this.connecting.classList.add('hidden');
+                    resolve();
+                }, () => reject(new Error('Cannot connect to chat')));
+            });
+
+            // Tải tin nhắn cũ (như repository.findAll())
+            const response = await fetch(`/conversation/${conversationId}/messages?page=0&size=10`);
+            if (!response.ok) {
+                throw new Error('Cannot load messages');
+            }
+            const messages = await response.json();
+            messages.forEach(message => this.showMessage(message));
+        } catch (error) {
+            this.showError(error.message);
+            this.back();
+        }
+    }
+
+    // Gửi tin nhắn hoặc file (như @MessageMapping + @PostMapping("/file/upload"))
+    async sendMessage(event) {
+        event.preventDefault();
+        const content = this.messageInput.value.trim();
+        const file = this.fileInput.files[0];
+        if (!content && !file) {
+            return;
+        }
+        if (!this.stompClient) {
+            this.showError('Not connected to chat');
+            return;
+        }
+
+        const message = {
+            sender: this.username,
             type: 'CHAT'
         };
-        stompClient.send(`/app/chat/private/${conversationId}`, {}, JSON.stringify(chatMessage));
-        messageInput.value = '';
+
+        try {
+            // Upload file nếu có
+            if (file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                const response = await fetch('/file/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) {
+                    throw new Error('Cannot upload file');
+                }
+                const data = await response.json();
+                message.fileUrl = data.url;
+            }
+
+            // Thêm content nếu có
+            if (content) {
+                message.content = content;
+            }
+
+            // Gửi qua STOMP
+            this.stompClient.send(`/app/chat/private/${this.conversationId}`, {}, JSON.stringify(message));
+            this.messageInput.value = '';
+            this.fileInput.value = '';
+        } catch (error) {
+            this.showError(error.message);
+        }
     }
-    event.preventDefault();
-}
 
-function fetchOldMessages() {
-    // Gửi yêu cầu lấy lịch sử tin nhắn
-    fetch(`/conversation/${conversationId}/messages?page=0&size=20`)
-        .then(response => response.json())
-        .then(messages => {
-            // Xóa nội dung cũ trong khu vực tin nhắn
-            messageArea.innerHTML = '';
-
-            // Hiển thị từng tin nhắn trong lịch sử
-            messages.forEach(message => {
-                var messageElement = document.createElement('li');
-                messageElement.classList.add('chat-message');
-
-                var usernameElement = document.createElement('span');
-                usernameElement.textContent = message.sender;
-                messageElement.appendChild(usernameElement);
-
-                var textElement = document.createElement('p');
-                textElement.textContent = message.content;
-                messageElement.appendChild(textElement);
-
-                messageArea.appendChild(messageElement);
-            });
-
-            // Cuộn xuống cuối khu vực tin nhắn
-            messageArea.scrollTop = messageArea.scrollHeight;
-        })
-        .catch(error => {
-            console.error('Error fetching messages:', error);
-            errorMessage.textContent = 'Failed to load messages. Please try again!';
-            errorMessage.classList.remove('hidden');
-        });
-}
-
-function onMessageReceived(payload) {
-    var message = JSON.parse(payload.body);
-
-    var messageElement = document.createElement('li');
-    messageElement.classList.add('chat-message');
-
-    var usernameElement = document.createElement('span');
-    usernameElement.textContent = message.sender;
-    messageElement.appendChild(usernameElement);
-
-    var textElement = document.createElement('p');
-    textElement.textContent = message.content;
-    messageElement.appendChild(textElement);
-
-    messageArea.appendChild(messageElement);
-    messageArea.scrollTop = messageArea.scrollHeight;
-}
-
-function backToList() {
-    if (stompClient) {
-        stompClient.disconnect();
+    // Quay lại (như @DeleteMapping hoặc redirect)
+    back() {
+        if (this.stompClient) {
+            this.stompClient.disconnect();
+            this.stompClient = null;
+        }
+        this.chatPage.classList.add('hidden');
+        this.homePage.classList.remove('hidden');
+        this.messages.innerHTML = '';
+        this.hideError();
     }
-    chatPage.classList.add('hidden');
-    privatePage.classList.remove('hidden');
-    errorMessage.classList.add('hidden');
-    messageArea.innerHTML = '';
 }
 
-loadConversationsButton.addEventListener('click', loadConversations);
-startNewChatButton.addEventListener('click', startNewChat);
-messageForm.addEventListener('submit', sendMessage);
-backToListButton.addEventListener('click', backToList);
+// Khởi tạo (như @PostConstruct)
+new ChatApp();
