@@ -1,7 +1,5 @@
 package com.mthien.chat_service.payload;
 
-import java.time.LocalDateTime;
-
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,11 +12,11 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class MessageRequest {
-    String sender;
-    String content;
-    String fileUrl;
-    String fileType;
-    LocalDateTime messageTime;
-    MessageType type;
+public class FileInfo {
+    String name;
+    String contentType;
+    long size;
+    String md5CheckSum;
+    String path;
+    String url;
 }
